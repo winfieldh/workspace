@@ -1,5 +1,3 @@
-test
-
 #!/usr/bin/python
 
 from pyalgotrade import strategy
