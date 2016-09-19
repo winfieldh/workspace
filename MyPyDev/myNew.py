@@ -7,8 +7,6 @@ from pyalgotrade.technical import rsi
 from pyalgotrade.technical import cross
 from pyalgotrade.technical import stoch
 
-from pyalgotrade.dataseries import bards
-
 class RSI2A(strategy.BacktestingStrategy):
     def __init__(self, feed, instrument, entrySMA, exitSMA, rsiPeriod, overBoughtThreshold, overSoldThreshold):
         strategy.BacktestingStrategy.__init__(self, feed)
@@ -90,7 +88,7 @@ class RSI2A(strategy.BacktestingStrategy):
                 self.__shortPos = self.enterShort(self.__instrument, shares, True)
 
     def enterLongSignal(self, bar):
-        return self.__stochK[-1] <= self.__overSoldThreshold
+        return self.__stochK[-3] < 50 and self.__stochK[-2] > 50
 #        return cross.cross_above(self.__fastSMA,self.__slowSMA,-2)
         #return self.__longPos.getAge().days > 20
 
