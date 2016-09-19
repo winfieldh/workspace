@@ -5,6 +5,9 @@ from pyalgotrade import strategy
 from pyalgotrade.technical import ma
 from pyalgotrade.technical import rsi
 from pyalgotrade.technical import cross
+from pyalgotrade.technical import stoch
+
+from pyalgotrade.dataseries import bards
 
 class RSI2A(strategy.BacktestingStrategy):
     def __init__(self, feed, instrument, entrySMA, exitSMA, rsiPeriod, overBoughtThreshold, overSoldThreshold):
@@ -16,12 +19,21 @@ class RSI2A(strategy.BacktestingStrategy):
         self.__priceDS = feed[instrument].getPriceDataSeries()
         self.__entrySMA = ma.SMA(self.__priceDS, entrySMA)
         self.__exitSMA = ma.SMA(self.__priceDS, exitSMA)
+        self.__fastSMA = ma.SMA(self.__priceDS, 20)
+        self.__slowSMA = ma.SMA(self.__priceDS, 100)
         self.__rsi = rsi.RSI(self.__priceDS, rsiPeriod)
+  #      self.__stochD = stoch.StochasticOscillator(self.__priceDS,meth)
         self.__overBoughtThreshold = overBoughtThreshold
         self.__overSoldThreshold = overSoldThreshold
         self.__longPos = None
         self.__shortPos = None
 
+        self.__barDs = self.getFeed()[self.__instrument]
+        self.__stochK = stoch.StochasticOscillator(self.__barDs,30,24)
+        self.__stochK = stoch.StochasticOscillator.getD(self.__stochK)
+        self.__stochD = ma.SMA(self.__stochK, 11)
+        
+        
     def getEntrySMA(self):
         return self.__entrySMA
 
@@ -59,8 +71,9 @@ class RSI2A(strategy.BacktestingStrategy):
         bar = bars[self.__instrument]
         if self.__longPos is not None: #we have a long
             #if self.exitLongSignal(): #check if we should exit
-            if (self.__longPos.getAge().days > 20) or (self.__longPos.getReturn() > .01):
+            if (self.__longPos.getAge().days > 60) or (self.__longPos.getReturn() > .05):
                 self.info("Exiting %s. Held for %s. Date: %s. Return: %0.2f" % (self.__instrument, self.__longPos.getAge().days,self.getCurrentDateTime(),self.__longPos.getReturn()))
+                self.info("Stoch: %s" % (self.__stochK[-1]))
                 self.__longPos.exitMarket() # exit long position
                 
         elif self.__shortPos is not None: #we have a short
@@ -77,7 +90,8 @@ class RSI2A(strategy.BacktestingStrategy):
                 self.__shortPos = self.enterShort(self.__instrument, shares, True)
 
     def enterLongSignal(self, bar):
-        return self.__rsi[-1] <= self.__overSoldThreshold
+        return self.__stochK[-1] <= self.__overSoldThreshold
+#        return cross.cross_above(self.__fastSMA,self.__slowSMA,-2)
         #return self.__longPos.getAge().days > 20
 
     def exitLongSignal(self):
@@ -94,12 +108,12 @@ def main(plot):
     instrument = "DIA"
     entrySMA = 200
     exitSMA = 5
-    rsiPeriod = 2
+    rsiPeriod = 7
     overBoughtThreshold = 90
-    overSoldThreshold = 10
+    overSoldThreshold = 30
 
     # Download the bars.
-    feed = yahoofinance.build_feed([instrument], 2015, 2016, ".")
+    feed = yahoofinance.build_feed([instrument], 2012, 2016, ".")
 
     strat = RSI2A(feed, instrument, entrySMA, exitSMA, rsiPeriod, overBoughtThreshold, overSoldThreshold)
     sharpeRatioAnalyzer = sharpe.SharpeRatio()
